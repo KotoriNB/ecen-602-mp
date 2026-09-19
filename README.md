@@ -8,7 +8,7 @@ child process per connection, so multiple clients are served simultaneously.
 | Member | Role |
 |---|---|
 | Bozhou Chen (Kotori) | Server (`echos.c`), shared I/O (`echo_io.c`), `util.c`, Makefile, test harness |
-| *(partner name)* | Client (`echo.c`), test report screen captures |
+| (partner name)* | Client (`echo.c`), test report screen captures |
 
 > Fill in the partner's name before submitting — Submission Guideline 1 asks
 > for a statement of each member's role.
