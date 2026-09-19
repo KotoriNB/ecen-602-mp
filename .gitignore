@@ -1,0 +1,12 @@
+# Build products — these must not be in the submission (Guideline 6).
+echos
+echo
+*.o
+core
+core.*
+*.tar.gz
+
+# Editor / tooling noise
+*~
+.vscode/
+tests/__pycache__/
