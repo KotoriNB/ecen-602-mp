@@ -25,6 +25,9 @@ CLIENT_BIN := $(if $(CLIENT_SRC),echo,)
 
 BINS := $(SERVER_BIN) $(CLIENT_BIN)
 
+# Test harness.  Standalone C, built only by `make test`, never by `make`.
+TEST_BIN := tests/test_echos
+
 .PHONY: all clean test dist
 
 all: $(BINS)
@@ -47,12 +50,17 @@ echo.o    : echo.c    echo_io.h util.h
 echo_io.o : echo_io.c echo_io.h
 util.o    : util.c    util.h
 
-test: $(SERVER_BIN)
-	./tests/run_tests.py --server ./$(SERVER_BIN)
+# -I. lets the harness include echo_io.h, so it always tests against the same
+# ECHO_MAXLINE the server was built with.
+$(TEST_BIN): tests/test_echos.c echo_io.h
+	$(CC) $(CFLAGS) -I. -o $@ $<
+
+test: $(SERVER_BIN) $(TEST_BIN)
+	./$(TEST_BIN) --server ./$(SERVER_BIN)
 
 clean:
 	rm -f $(SERVER_BIN) echo *.o core core.* *~
-	rm -rf tests/__pycache__
+	rm -f $(TEST_BIN)
 
 dist: clean
 	tar czf ../ecen602-mp1.tar.gz --exclude='*.tar.gz' --exclude='.git' .

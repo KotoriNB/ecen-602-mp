@@ -1,6 +1,7 @@
 # Build products — these must not be in the submission (Guideline 6).
 echos
 echo
+tests/test_echos
 *.o
 core
 core.*
@@ -9,4 +10,3 @@ core.*
 # Editor / tooling noise
 *~
 .vscode/
-tests/__pycache__/

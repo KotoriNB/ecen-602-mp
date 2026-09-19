@@ -49,7 +49,7 @@ cleanly rather than being killed.
 | `docs/DESIGN.md` | Conceptual model / architecture sketch (required by Note 2) |
 | `docs/TESTPLAN.md` | Test strategy, the five required cases, how to reproduce each |
 | `docs/screenshots/` | Screen captures for the test report |
-| `tests/run_tests.py` | Automated harness — 11 cases, exits non-zero on failure |
+| `tests/test_echos.c` | Automated harness in C — 11 cases, exits non-zero on failure |
 | `tests/three_clients.sh` | Hand-driven three-client demo for the screenshots |
 
 ## Architecture

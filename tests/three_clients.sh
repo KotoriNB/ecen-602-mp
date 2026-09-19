@@ -19,7 +19,7 @@ PORT=${2:-9001}
 HOLD=${3:-5}          # seconds to keep each connection open
 
 if ! command -v nc >/dev/null 2>&1; then
-    echo "nc (netcat) not found; use tests/run_tests.py instead" >&2
+    echo "nc (netcat) not found; use 'make test' instead" >&2
     exit 1
 fi
 

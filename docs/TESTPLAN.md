@@ -7,7 +7,7 @@ strategy; the report with the captures is what gets submitted alongside it.
 ## Strategy in one paragraph
 
 Test in three layers. **Layer 1** is the server alone, driven by a raw-socket
-harness (`tests/run_tests.py`) — this is where the awkward cases live, because
+harness (`tests/test_echos.c`) — this is where the awkward cases live, because
 a script can send exactly 4096 bytes with no newline, or reset a connection
 mid-line, which you cannot do reliably by typing at a terminal. **Layer 2** is
 the real `echo` client against the real `echos` server, run by hand: this is
@@ -21,13 +21,17 @@ together.
 ## Layer 1 — automated harness
 
 ```sh
-make test                              # or:
-./tests/run_tests.py --server ./echos -v
+make test                              # or, to see the server's log too:
+./tests/test_echos --server ./echos -v
 ```
 
-Starts `echos` on a free port, runs 11 cases, shuts it down with `SIGINT`,
-exits non-zero if anything failed. Run it after every change; it takes a few
-seconds.
+Builds `tests/test_echos.c`, starts `echos` on a free port, runs 11 cases,
+shuts it down with `SIGINT`, and exits non-zero if anything failed. Run it
+after every change; it takes a few seconds.
+
+The harness is plain C with no dependencies, and it `#include`s `echo_io.h`,
+so it always tests against the same `ECHO_MAXLINE` the server was compiled
+with — change the constant and the max-line case follows automatically.
 
 | # | Case | What it proves |
 |---|---|---|
@@ -64,7 +68,7 @@ the server log is the evidence for concurrency and EOF handling.
 | Required case | How to drive it | What the capture must show |
 |---|---|---|
 | 1. Line + newline | Type `hello world` and press Enter | Client prints `hello world`; server logs `echoed 12 bytes` |
-| 2. Max-length line, no newline | `python3 -c "import sys; sys.stdout.write('A'*4096)" \| ./echo 127.0.0.1 9001` | 4096 `A`s come back; server log notes the line-limit case |
+| 2. Max-length line, no newline | `head -c 4096 /dev/zero \| tr '\0' 'A' \| ./echo 127.0.0.1 9001 \| wc -c` | prints `4096`; server log notes the line-limit case |
 | 3. No characters + EOF | Press Ctrl-D as the very first keystroke | Client exits immediately; server logs `EOF from client` then `connection closed` |
 | 4. Client terminated after entering text | Type a line, get the echo, then `kill -9` the client from a third terminal | Server logs the error or EOF and the **parent keeps running**; a new client connects fine right after |
 | 5. Three clients | `./tests/three_clients.sh 127.0.0.1 9001`, or three terminals each running `./echo` | Server log shows **three different child pids** alive at the same time, each echoing its own text |
