@@ -1,11 +1,8 @@
 // tests/test_echos.c -- automated test harness for the echo server.
-// A development tool, not part of the graded deliverable. It starts its own
-// server on a free port, drives every case over raw TCP, then shuts the server
-// down with SIGINT.
 //
 // Usage: ./tests/test_echos [-v] [--server PATH] [--port PORT]
 
-#include "echo_io.h"          // keeps ECHO_MAXLINE in sync with the server
+#include "echo_io.h"
 
 #include <arpa/inet.h>
 #include <errno.h>

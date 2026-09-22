@@ -1,19 +1,12 @@
 # MP1 — Conceptual model and design sketch
 
-Required by Note 2 of the handout: "you should sketch these thoughts out on
-paper before you begin (it is also required with submission of the project)."
-
 ## 1. What the service is
 
 RFC 862: a server listens on a TCP port; once a connection is established, any
-data received is sent back unchanged until the client terminates the
-connection. The handout narrows this to a **line-oriented** echo: the client
-reads a line from stdin, sends it, the server echoes it, the client prints it.
+data received is sent back unchanged until the client terminates the connection.
+The clientreads a line from stdin, sends it, the server echoes it, the client prints it.
 
 ## 2. Data model
-
-There is no application state to speak of, which is the point of the exercise.
-The only state is:
 
 | Scope | State | Lifetime |
 |---|---|---|
@@ -21,22 +14,11 @@ The only state is:
 | Server child | `connfd`, peer address string, one `ECHO_MAXLINE + 1` byte line buffer, `readline()`'s private read buffer | one connection |
 | Client | `sockfd`, one line buffer | one connection |
 
-Nothing is shared between connections. That is a deliberate consequence of the
-process-per-connection model: no locking, no global tables, no cross-talk.
-
-The unit of work is a **line**: bytes up to and including `'\n'`, or
-`ECHO_MAXLINE` bytes if no newline arrives first, or whatever is buffered when
-EOF arrives.
-
 ## 3. Major decision points
 
 ### D1. Concurrency model — `fork()` per connection
 
-Alternatives: iterative (one client at a time), `select()`/`poll()` in one
-process, threads.
-
-Chosen: `fork()`. The handout requires it, and it gives fault isolation for
-free. Cost is one process per client — irrelevant at this scale.
+Chosen: `fork()`.
 
 ### D2. Where does the framing happen?
 
@@ -49,9 +31,9 @@ into lines. Test case 7 sends one line in five segments to prove it.
 
 `ECHO_MAXLINE = 4096`, buffers are `ECHO_MAXLINE + 1`.
 
-Decision: an over-long line is **not** an error and **not** truncated. It is
-echoed in `ECHO_MAXLINE`-sized pieces. The alternative — dropping the excess,
-or closing the connection — would lose user data and violate Postel's "be
+Decision: an over-long line is not an error and not truncated. It is echoed 
+in `ECHO_MAXLINE`-sized pieces. The alternative — dropping the excess, or 
+closing the connection — would lose user data and violate Postel's "be
 liberal in what you accept". Client and server must agree on the constant only
 for the *max-length-line* test case to be meaningful, not for correctness.
 
@@ -105,7 +87,7 @@ loop:
     n >  0  →  writen(connfd, buf, n); log; continue
 ```
 
-## 5. What could go wrong (and where it is handled)
+## 5. What could go wrong
 
 | Hazard | Where it is dealt with |
 |---|---|

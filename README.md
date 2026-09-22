@@ -13,9 +13,9 @@ multiple clients are served simultaneously.
 ## Build and usage
 
 ```sh
-make            # builds echos, and echo when echo.c is present
-make test       # runs the automated harness (11 cases)
-make clean      # removes binaries and object files — run before submitting
+make            # builds echos and echo
+make test       # runs the automated harness (with 11 cases implemented in test_echos.c)
+make clean      # removes binaries and object files
 
 ./echos <port>              # e.g. ./echos 9001
 ./echo <ip_addr> <port>     # e.g. ./echo 127.0.0.1 9001
@@ -68,8 +68,8 @@ Key decisions:
 - Parent closes `connfd`, child closes `listenfd`. Both are mandatory: an
   open `connfd` in the parent keeps the client from ever seeing FIN, and an
   open `listenfd` in a child keeps the port bound after the parent dies.
-- `SIGCHLD` reaped with `sigaction()` and a `waitpid(WNOHANG)` loop —
-  signals do not queue, so one `SIGCHLD` can cover several exits.
+- `SIGCHLD` reaped with `sigaction()` and a `waitpid(WNOHANG)` loop. Signals
+  do not queue, so one `SIGCHLD` can cover several exits.
 - `SIGPIPE` ignored, so a vanished client surfaces as `EPIPE` to log
   instead of killing the child silently.
 - `EINTR` handled in `readline()`, `writen()` and around `accept()`.
@@ -95,3 +95,5 @@ This is a buffer size, not a protocol limit: a longer line is echoed back in
 4. IPv4 only, per the handout's dotted-decimal requirement.
 5. No idle timeout. A client that connects and sends nothing keeps its
    child alive until it disconnects.
+6. From Bozhou: I mistakenly put my umich email instead of my tamu email,
+   but my NetID is indeed Kotori, and my tamu email is kotori@tamu.edu.

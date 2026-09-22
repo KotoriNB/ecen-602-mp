@@ -1,8 +1,8 @@
 # Makefile -- ECEN 602 MP1: TCP echo server and client
 #
-#   make        build echos, and echo if echo.c is present
+#   make        build echos and echo
 #   make test   build and run the automated harness
-#   make clean  remove binaries and object files (run before submitting)
+#   make clean  remove binaries and object files
 #   make dist   clean, then produce the submission tarball
 
 CC      := gcc
@@ -14,8 +14,6 @@ COMMON_OBJ := echo_io.o util.o
 SERVER_BIN := echos
 SERVER_OBJ := echos.o $(COMMON_OBJ)
 
-# Build the client only when echo.c exists, so the server half always compiles
-# on its own while the two halves are developed in parallel.
 CLIENT_SRC := $(wildcard echo.c)
 CLIENT_BIN := $(if $(CLIENT_SRC),echo,)
 
