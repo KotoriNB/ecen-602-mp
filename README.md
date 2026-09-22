@@ -31,13 +31,12 @@ cleanly rather than killing it.
 
 | File | Contents |
 |---|---|
-| `echos.c` | Server: accept/fork loop, signal handling, per-connection echo |
-| `echo_io.c`, `echo_io.h` | `writen()` and `readline()`, shared by both halves |
+| `echos.c` | Server |
+| `echo_io.c`, `echo_io.h` | `writen()` and `readline()`, shared by both Client and Server |
 | `util.c`, `util.h` | Timestamped logging and fatal-error reporting |
 | `echo.c` | Client |
-| `docs/DESIGN.md` | Conceptual model and design decisions (Note 2) |
-| `docs/TESTPLAN.md` | Test strategy and the five required cases |
-| `docs/screenshots/` | Screen captures for the test report |
+| `docs/DESIGN.md` | Conceptual model and design decisions |
+| `docs/Test_Report/` | Screen captures for the test report |
 | `tests/test_echos.c` | Automated harness, 11 cases, non-zero exit on failure |
 | `tests/three_clients.sh` | Hand-driven three-client demo |
 
@@ -95,5 +94,6 @@ This is a buffer size, not a protocol limit: a longer line is echoed back in
 4. IPv4 only, per the handout's dotted-decimal requirement.
 5. No idle timeout. A client that connects and sends nothing keeps its
    child alive until it disconnects.
-6. From Bozhou: I mistakenly put my umich email instead of my tamu email,
-   but my NetID is indeed Kotori, and my tamu email is kotori@tamu.edu.
+6. From Bozhou: In the Test Report, I mistakenly put my umich email
+   instead of my tamu email, but my NetID is indeed Kotori, and my tamu
+   email is kotori@tamu.edu.
