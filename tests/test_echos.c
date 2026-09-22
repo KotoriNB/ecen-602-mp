@@ -1,28 +1,11 @@
-/*
- * tests/test_echos.c -- automated test harness for the ECEN 602 MP1 echo server.
- *
- * This is a DEVELOPMENT tool, not part of the graded deliverable.  It speaks
- * raw TCP to the server so that each required test case can be driven exactly
- * and repeatably -- including the awkward ones (a line at the length limit
- * with no newline, a connection reset mid-line, three clients at once) that
- * are hard to trigger by hand at a terminal.
- *
- * It starts its own copy of the server on a free port, runs every case, then
- * shuts the server down with SIGINT (which also tests graceful shutdown).
- *
- * Usage:
- *     ./tests/test_echos [-v] [--server PATH] [--port PORT]
- *
- *   -v              let the server's log through to the terminal
- *   --server PATH   server binary to test (default ./echos)
- *   --port PORT     fixed port (default: ask the kernel for a free one)
- *
- * Exit status is 0 only if every case passed.
- *
- * ECEN 602 -- Machine Problem 1
- */
+// tests/test_echos.c -- automated test harness for the echo server.
+// A development tool, not part of the graded deliverable. It starts its own
+// server on a free port, drives every case over raw TCP, then shuts the server
+// down with SIGINT.
+//
+// Usage: ./tests/test_echos [-v] [--server PATH] [--port PORT]
 
-#include "echo_io.h"          /* ECHO_MAXLINE / ECHO_BUFSIZE stay in sync */
+#include "echo_io.h"          // keeps ECHO_MAXLINE in sync with the server
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -40,16 +23,12 @@
 #include <time.h>
 #include <unistd.h>
 
-#define IO_TIMEOUT_SEC  5           /* per-recv timeout, so a bug cannot hang */
+// Per-recv timeout, so a hung server fails a case instead of the whole run.
+#define IO_TIMEOUT_SEC  5
 #define DEFAULT_SERVER  "./echos"
-#define SCRATCH_MAX     (ECHO_MAXLINE * 2 + 64)
 
 static int tests_passed;
 static int tests_failed;
-
-/* ------------------------------------------------------------------ */
-/* Reporting                                                           */
-/* ------------------------------------------------------------------ */
 
 static void pass(const char *name, const char *fmt, ...)
 {
@@ -81,10 +60,6 @@ static void fail(const char *name, const char *fmt, ...)
     tests_failed++;
 }
 
-/* ------------------------------------------------------------------ */
-/* Small helpers                                                       */
-/* ------------------------------------------------------------------ */
-
 static void msleep(long millis)
 {
     struct timespec ts;
@@ -95,11 +70,7 @@ static void msleep(long millis)
         ;
 }
 
-/*
- * Ask the kernel for an unused port: bind to port 0, read back what we got,
- * then release it.  A race is theoretically possible but the window is tiny
- * and this beats hard-coding a port that may already be busy.
- */
+// Bind to port 0, read back what the kernel picked, release it.
 static uint16_t free_port(void)
 {
     struct sockaddr_in addr;
@@ -123,8 +94,6 @@ static uint16_t free_port(void)
     return port;
 }
 
-/* Connect to the server under test.  Timeouts keep a hung server from
- * hanging the harness. */
 static int connect_server(uint16_t port)
 {
     struct sockaddr_in addr;
@@ -151,7 +120,6 @@ static int connect_server(uint16_t port)
     return fd;
 }
 
-/* Write all n bytes, retrying on EINTR.  Returns 0 or -1. */
 static int send_all(int fd, const void *vptr, size_t n)
 {
     const char *ptr   = vptr;
@@ -171,7 +139,7 @@ static int send_all(int fd, const void *vptr, size_t n)
     return 0;
 }
 
-/* Read exactly n bytes.  Returns 0, or -1 on EOF / timeout / error. */
+// Returns 0, or -1 on EOF, timeout or error.
 static int recv_exactly(int fd, void *vptr, size_t n)
 {
     char  *ptr = vptr;
@@ -183,16 +151,15 @@ static int recv_exactly(int fd, void *vptr, size_t n)
         if (nr < 0) {
             if (errno == EINTR)
                 continue;
-            return -1;                  /* includes EAGAIN from the timeout */
+            return -1;
         }
         if (nr == 0)
-            return -1;                  /* peer closed early */
+            return -1;
         got += (size_t)nr;
     }
     return 0;
 }
 
-/* Read until EOF or timeout; returns the byte count (capped at cap). */
 static size_t recv_drain(int fd, char *buf, size_t cap)
 {
     size_t got = 0;
@@ -203,7 +170,7 @@ static size_t recv_drain(int fd, char *buf, size_t cap)
         if (nr < 0) {
             if (errno == EINTR)
                 continue;
-            break;                      /* timeout: treat as end of data */
+            break;
         }
         if (nr == 0)
             break;
@@ -212,7 +179,6 @@ static size_t recv_drain(int fd, char *buf, size_t cap)
     return got;
 }
 
-/* Count zombie (<defunct>) echos processes via ps. */
 static int count_zombie_servers(void)
 {
     char  line[256];
@@ -234,10 +200,6 @@ static int count_zombie_servers(void)
     pclose(fp);
     return count;
 }
-
-/* ------------------------------------------------------------------ */
-/* Server lifecycle                                                    */
-/* ------------------------------------------------------------------ */
 
 static pid_t spawn_server(const char *path, uint16_t port, int verbose)
 {
@@ -261,12 +223,11 @@ static pid_t spawn_server(const char *path, uint16_t port, int verbose)
             }
         }
         execl(path, path, portbuf, (char *)NULL);
-        _exit(127);                     /* exec failed */
+        _exit(127);
     }
     return pid;
 }
 
-/* Poll until the server is accepting, or give up after ~5 seconds. */
 static int wait_for_listen(uint16_t port, pid_t server)
 {
     int attempt;
@@ -279,7 +240,7 @@ static int wait_for_listen(uint16_t port, pid_t server)
             return 0;
         }
         if (waitpid(server, NULL, WNOHANG) == server)
-            return -1;                  /* server died during startup */
+            return -1;
         msleep(50);
     }
     return -1;
@@ -290,11 +251,7 @@ static int server_alive(pid_t pid)
     return waitpid(pid, NULL, WNOHANG) == 0;
 }
 
-/* ------------------------------------------------------------------ */
-/* Required test cases (Submission Guideline 2)                        */
-/* ------------------------------------------------------------------ */
-
-/* (1) A line of text terminated by a newline. */
+// Required case 1: line of text terminated by a newline.
 static void case_line_with_newline(uint16_t port)
 {
     static const char name[] = "1. line terminated by newline";
@@ -325,7 +282,6 @@ static void case_line_with_newline(uint16_t port)
     close(fd);
 }
 
-/* (1b) Several lines on one connection, order preserved. */
 static void case_multiple_lines(uint16_t port)
 {
     static const char  name[] = "1b. multiple lines, one connection";
@@ -356,7 +312,8 @@ static void case_multiple_lines(uint16_t port)
     close(fd);
 }
 
-/* (2) A line of the maximum line length with no newline. */
+// Required case 2: the server must return on the length limit, not block
+// waiting for a newline that never arrives.
 static void case_maxline_no_newline(uint16_t port)
 {
     static const char name[] = "2. max-length line, no newline";
@@ -403,7 +360,7 @@ static void case_maxline_no_newline(uint16_t port)
     free(got);
 }
 
-/* (2b) A line LONGER than the buffer: must come back whole, in pieces. */
+// An over-long line must come back whole, in pieces, nothing truncated.
 static void case_over_maxline(uint16_t port)
 {
     static const char name[] = "2b. line longer than the buffer";
@@ -444,7 +401,8 @@ static void case_over_maxline(uint16_t port)
     free(got);
 }
 
-/* (3) A line with no characters, followed by EOF. */
+// Required case 3: no characters, then EOF. A bare newline is still an empty
+// line and must echo one byte.
 static void case_empty_then_eof(uint16_t port)
 {
     static const char name[] = "3. no characters, then EOF";
@@ -452,7 +410,6 @@ static void case_empty_then_eof(uint16_t port)
     size_t            leftover;
     int               fd;
 
-    /* 3a: connect and close immediately, sending nothing at all. */
     if ((fd = connect_server(port)) < 0) {
         fail(name, "connect: %s", strerror(errno));
         return;
@@ -466,7 +423,6 @@ static void case_empty_then_eof(uint16_t port)
         return;
     }
 
-    /* 3b: a bare newline is an empty *line* and must still echo. */
     if ((fd = connect_server(port)) < 0) {
         fail(name, "reconnect: %s", strerror(errno));
         return;
@@ -481,7 +437,7 @@ static void case_empty_then_eof(uint16_t port)
     close(fd);
 }
 
-/* (4) Client terminated after entering text (abrupt close -> RST). */
+// Required case 4: client terminated after entering text.
 static void case_client_killed(uint16_t port)
 {
     static const char name[] = "4. client killed after sending text";
@@ -502,15 +458,14 @@ static void case_client_killed(uint16_t port)
         return;
     }
 
-    /* SO_LINGER with a zero timeout makes close() send RST instead of FIN --
-     * which is what a SIGKILLed client looks like to the server. */
+    // SO_LINGER 0 makes close() send RST, which is what a killed client looks
+    // like to the server.
     lg.l_onoff  = 1;
     lg.l_linger = 0;
     setsockopt(fd, SOL_SOCKET, SO_LINGER, &lg, sizeof(lg));
     close(fd);
     msleep(300);
 
-    /* The server must still be listening and serving. */
     if ((fd = connect_server(port)) < 0) {
         fail(name, "server stopped accepting after the reset");
         return;
@@ -525,7 +480,8 @@ static void case_client_killed(uint16_t port)
     close(fd);
 }
 
-/* (5) Three clients connected to the server simultaneously. */
+// Required case 5: three clients at once. All send before any reads, so the
+// connections really overlap; the reverse-order round catches cross-talk.
 static void case_three_clients(uint16_t port)
 {
     static const char name[] = "5. three simultaneous clients";
@@ -542,8 +498,6 @@ static void case_three_clients(uint16_t port)
         }
     }
 
-    /* Every client sends before any client reads, so all three connections
-     * really are open and in flight at the same time. */
     for (i = 0; i < 3; i++) {
         snprintf(want, sizeof(want), "client-%d round-one\n", i);
         if (send_all(fd[i], want, strlen(want)) < 0) {
@@ -562,8 +516,6 @@ static void case_three_clients(uint16_t port)
         }
     }
 
-    /* Second round in reverse order: proves the per-connection readline()
-     * buffers are not shared between children. */
     for (i = 2; i >= 0; i--) {
         snprintf(want, sizeof(want), "client-%d round-two\n", i);
         if (send_all(fd[i], want, strlen(want)) < 0) {
@@ -589,11 +541,6 @@ cleanup:
         close(fd[i]);
 }
 
-/* ------------------------------------------------------------------ */
-/* Extra cases: things the handout warns about                         */
-/* ------------------------------------------------------------------ */
-
-/* Children must be reaped: no <defunct> processes after churn. */
 static void case_no_zombies(uint16_t port)
 {
     static const char name[] = "6. no zombie children after 12 connections";
@@ -626,7 +573,8 @@ static void case_no_zombies(uint16_t port)
         pass(name, "SIGCHLD handler reaped every child");
 }
 
-/* A line delivered in several TCP segments must echo once, whole. */
+// TCP is a byte stream: readline() must wait for the newline, not echo a
+// fragment of a line that arrived in pieces.
 static void case_split_segments(uint16_t port)
 {
     static const char  name[] = "7. line split across TCP segments";
@@ -664,7 +612,7 @@ static void case_split_segments(uint16_t port)
     close(fd);
 }
 
-/* Bytes above 0x7f and embedded NULs must survive the round trip. */
+// Embedded NULs and high bytes catch a writen() that uses strlen().
 static void case_binary_safe(uint16_t port)
 {
     static const char name[] = "8. 8-bit clean (NUL and high bytes)";
@@ -689,7 +637,6 @@ static void case_binary_safe(uint16_t port)
     close(fd);
 }
 
-/* Many short-lived connections back to back (fork/accept stress). */
 static void case_rapid_connections(uint16_t port)
 {
     static const char name[] = "9. 40 rapid sequential connections";
@@ -718,10 +665,6 @@ static void case_rapid_connections(uint16_t port)
 
     pass(name, "accept/fork loop stable");
 }
-
-/* ------------------------------------------------------------------ */
-/* main                                                                */
-/* ------------------------------------------------------------------ */
 
 typedef void (*test_fn)(uint16_t);
 
@@ -769,8 +712,7 @@ int main(int argc, char **argv)
         }
     }
 
-    /* A test that writes to a socket the server has closed must see EPIPE,
-     * not die. */
+    // Writing to a socket the server has closed must give EPIPE, not death.
     signal(SIGPIPE, SIG_IGN);
 
     if (access(server_path, X_OK) < 0) {
@@ -808,7 +750,7 @@ int main(int argc, char **argv)
     }
     printf("\n");
 
-    /* Shutting down with SIGINT also exercises the graceful-shutdown path. */
+    // SIGINT here also exercises the server's graceful-shutdown path.
     if (server > 0) {
         int waited;
 

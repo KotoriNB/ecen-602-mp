@@ -1,8 +1,4 @@
-/*
- * util.c -- Implementation of the logging helpers.
- *
- * ECEN 602 -- Machine Problem 1
- */
+// util.c -- implementation of the logging helpers.
 
 #include "util.h"
 
@@ -16,17 +12,13 @@
 
 #define LOG_LINE_MAX 1024
 
-/*
- * Advance an offset by the result of a *printf() call, clamping on
- * truncation or encoding error so we never run off the end of the buffer.
- * Always leaves at least one byte free for the trailing newline.
- */
+// Advance past a *printf() result, clamping so we never run past the buffer.
 static size_t bump(size_t off, int ret, size_t cap)
 {
     if (ret < 0)
-        return off;                          /* encoding error: keep offset */
+        return off;
     if ((size_t)ret >= cap - off)
-        return cap - 1;                      /* truncated: park at the end  */
+        return cap - 1;
     return off + (size_t)ret;
 }
 
@@ -58,7 +50,6 @@ static void vlog(int fd, int with_errno, const char *fmt, va_list ap)
 
     line[off++] = '\n';
 
-    /* One write() per line keeps concurrent children from interleaving. */
     ignored = write(fd, line, off);
     (void)ignored;
 
